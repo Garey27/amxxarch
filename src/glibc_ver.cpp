@@ -1,7 +1,7 @@
 #ifndef WIN32
 extern "C" {
 
-
+#include "force_link_glibc_2.5.h"
 #include <cstdarg>
 #include <cstddef>
 #include <cstdint>
