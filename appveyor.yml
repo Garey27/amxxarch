@@ -2,7 +2,7 @@ version: 2.1 b{build}
 skip_tags: true
 image:
   - Visual Studio 2019
-  - Ubuntu
+  - Ubuntu1604
 configuration: Release
 for:
 -
@@ -47,7 +47,7 @@ for:
        - image: Visual Studio 2019
   build_script:
     - git submodule update --init --recursive
-    - cp .\vcpkg_triplet\x86-windows-sm.cmake .\vcpkg\triplets
+    - cp .\vcpkg_triplet\x86-windows-sm.cmake .\vcpkg\triplets\x86-windows-sm.cmake
     - cd vcpkg
     - .\bootstrap-vcpkg.bat
     - .\vcpkg install libarchive --triplet x86-windows-sm
