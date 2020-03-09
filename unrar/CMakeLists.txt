@@ -122,8 +122,6 @@ ELSE(MSVC) # TODO: GCC?
 	# TODO: Ensure "-fvisibility=hidden" is specified.
 	# Strip -Wall -Wextra.
 	get_filename_component(DIR_ONE_ABOVE ../ ABSOLUTE)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -include ${DIR_ONE_ABOVE}/glibc_version_header/version_headers/x86/force_link_glibc_2.5.h")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -include ${DIR_ONE_ABOVE}/glibc_version_header/version_headers/x86/force_link_glibc_2.5.h")
   	set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -m32 ")  
 	STRING(REPLACE "-Wall"   "" CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
 	STRING(REPLACE "-Wall"   "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
