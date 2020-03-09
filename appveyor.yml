@@ -17,10 +17,10 @@ for:
     - cp vcpkg_triplet/x86-linux-sm.cmake vcpkg/triplets/x86-linux-sm.cmake
     - cd vcpkg
     - ./bootstrap-vcpkg.sh    
-    - sudo update-alternatives --remove-all gcc || exit 0
-    - sudo update-alternatives --remove-all g++ || exit 0
-    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10 || exit 0
-    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10 || exit 0
+    - sudo update-alternatives --remove-all gcc || true
+    - sudo update-alternatives --remove-all g++ || true
+    - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10 || true
+    - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 10 || true
     - ./vcpkg install libarchive --triplet x86-linux-sm
     - cd ..
     - mkdir build
