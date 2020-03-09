@@ -8,13 +8,13 @@ for:
 -
   matrix:
     only:
-      - image: Ubuntu
+      - image: Ubuntu1604
   install:
     - sudo apt-get update
     - sudo apt-get --assume-yes install gcc-multilib g++-multilib gcc-4.9-multilib g++-4.9-multilib p7zip-full
   build_script:
     - git submodule update --init --recursive
-    - cp vcpkg_triplet/x86-linux-sm.cmake vcpkg/triplets
+    - cp vcpkg_triplet\x86-linux-sm.cmake vcpkg/triplets
     - cd vcpkg
     - ./bootstrap-vcpkg.sh    
     - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
@@ -47,18 +47,18 @@ for:
        - image: Visual Studio 2019
   build_script:
     - git submodule update --init --recursive
-    - cp vcpkg_triplet/x86-windows-sm.cmake vcpkg/triplets
+    - cp .\vcpkg_triplet\x86-windows-sm.cmake .\vcpkg\triplets
     - cd vcpkg
     - .\bootstrap-vcpkg.bat
     - .\vcpkg install libarchive --triplet x86-windows-sm
     - cd ..
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_TOOLCHAIN_FILE=../vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-sm  -A Win32
+    - cmake .. -DCMAKE_TOOLCHAIN_FILE=..\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-sm  -A Win32
     - cd ..
     - cmake --build build --config Release --parallel
   after_build:
-    - cmd: 7z a amxxarch-win32.zip ./build/Release/amxxarch_amxx.dll
+    - cmd: 7z a amxxarch-win32.zip .\build\Release\amxxarch_amxx.dll
   artifacts:
     - path: amxxarch-server-win32.zip
       name: amxxarch-server-win32
