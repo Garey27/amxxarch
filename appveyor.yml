@@ -1,8 +1,8 @@
 version: 2.1 b{build}
 skip_tags: true
 image:
-  - Visual Studio 2019
   - Ubuntu1604
+  - Visual Studio 2019
 configuration: Release
 for:
 -
@@ -14,7 +14,7 @@ for:
     - sudo apt-get --assume-yes install gcc-multilib g++-multilib gcc-4.9-multilib g++-4.9-multilib p7zip-full
   build_script:
     - git submodule update --init --recursive
-    - cp vcpkg_triplet\x86-linux-sm.cmake vcpkg/triplets
+    - cp vcpkg_triplet/x86-linux-sm.cmake vcpkg/triplets/x86-linux-sm.cmake
     - cd vcpkg
     - ./bootstrap-vcpkg.sh    
     - update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 10
@@ -60,8 +60,8 @@ for:
   after_build:
     - cmd: 7z a amxxarch-win32.zip .\build\Release\amxxarch_amxx.dll
   artifacts:
-    - path: amxxarch-server-win32.zip
-      name: amxxarch-server-win32
+    - path: amxxarch-win32.zip
+      name: amxxarch-win32
   deploy:
     - provider: GitHub
       description: nightly
