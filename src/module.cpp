@@ -15,7 +15,7 @@ namespace {
 
 using amxxarch::ArchiveEventType;
 using amxxarch::ArchiveFormat;
-using amxxarch::detect_format_from_name;
+using amxxarch::detect_format_from_file;
 using amxxarch::jobs;
 using amxxarch::parse_format;
 using amxxarch::SubmitRequest;
@@ -89,30 +89,34 @@ cell native_extract(AMX* amx, cell* params) {
 
   if (argc >= 5) password = amxxarch::pawn::get_string(amx, params[5], 3);
 
-  if (archive_path.empty() || output_dir.empty() || callback.empty())
+  if (archive_path.empty() || output_dir.empty() || callback.empty()) {
     return fail(
         INVALID_PARAMS,
         "arch_extract failed: archive path, output dir or callback is empty");
-
-  if (format == ArchiveFormat::AUTOMATIC)
-    format = detect_format_from_name(archive_path);
-
-  if (format == ArchiveFormat::UNKNOWN)
-    return fail(UNKNOWN_FORMAT,
-                "arch_extract failed: unknown archive format: " + archive_path);
+  }
 
   std::error_code file_error;
-  if (!fs::is_regular_file(archive_path, file_error))
+  if (!fs::is_regular_file(archive_path, file_error)) {
     return fail(FILE_NOT_FOUND,
                 "arch_extract failed: archive file not found: " + archive_path);
+  }
+
+  if (format == ArchiveFormat::AUTOMATIC)
+    format = detect_format_from_file(archive_path);
+
+  if (format == ArchiveFormat::UNKNOWN) {
+    return fail(UNKNOWN_FORMAT,
+                "arch_extract failed: unknown archive format: " + archive_path);
+  }
 
   int forward =
       MF_RegisterSPForwardByName(amx, callback.c_str(), FP_CELL, FP_CELL,
                                  FP_ARRAY, FP_CELL, FP_CELL, FP_ARRAY, FP_DONE);
 
-  if (forward < 0)
+  if (forward < 0) {
     return fail(BAD_CALLBACK,
                 "arch_extract failed: callback not found: " + callback);
+  }
 
   int job = jobs().submit({std::move(archive_path), std::move(output_dir),
                            format, forward, std::move(password)});

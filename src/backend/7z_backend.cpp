@@ -14,6 +14,7 @@
 #include "C/XzCrc64.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <codecvt>
 #include <cstdint>
@@ -23,10 +24,10 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
-#include <system_error>
-#include <utility>
 #include <string>
 #include <string_view>
+#include <system_error>
+#include <utility>
 #include <vector>
 
 namespace NArchive::N7z {
@@ -291,7 +292,6 @@ uint64_t prop_size(IInArchive* archive, UInt32 index) {
   if (archive->GetProperty(index, kpidSize, &prop) != S_OK) return 0;
 
   if (prop.vt == VT_UI8) return static_cast<uint64_t>(prop.uhVal.QuadPart);
-
   if (prop.vt == VT_UI4) return static_cast<uint64_t>(prop.ulVal);
 
   return 0;
@@ -532,7 +532,7 @@ Z7_COM7F_IMF(ExtractCallback::GetStream(UInt32 index,
   if (ask_extract_mode != NArchive::NExtract::NAskMode::kExtract) return S_OK;
 
   if (prop_is_dir(archive_, index)) {
-    const auto target = prepare_output_directory(output_root_, current_entry_);
+    prepare_output_directory(output_root_, current_entry_);
     sink_(CallbackEvent{request_.job_id, 0, ArchiveEventType::FILE,
                         current_entry_, 0, 0, "directory", false});
     return S_OK;
@@ -621,6 +621,21 @@ std::string_view extension_for_format(ArchiveFormat format) {
   throw std::runtime_error{"unsupported archive format"};
 }
 
+bool has_rar5_marker(const fs::path& path) {
+  static constexpr std::array<unsigned char, 8> RAR5_MARKER{
+      'R', 'a', 'r', '!', 0x1a, 0x07, 0x01, 0x00};
+
+  std::ifstream file{path, std::ios::binary};
+  if (!file) return false;
+
+  std::array<unsigned char, RAR5_MARKER.size()> marker{};
+  file.read(reinterpret_cast<char*>(marker.data()),
+            static_cast<std::streamsize>(marker.size()));
+
+  return file.gcount() == static_cast<std::streamsize>(marker.size()) &&
+         marker == RAR5_MARKER;
+}
+
 class CodecsHolder final {
 public:
   CodecsHolder() {
@@ -671,36 +686,76 @@ CodecsHolder& codecs() {
   return holder;
 }
 
+std::vector<unsigned> format_indices_for_request(CCodecs& codecs,
+                                                 ArchiveFormat format,
+                                                 const fs::path& path) {
+  std::vector<unsigned> indices;
+
+  auto add_archive_type = [&](std::string_view type) {
+    const auto index = codecs.FindFormatForArchiveType(ascii_to_ustring(type));
+    if (index >= 0) indices.push_back(static_cast<unsigned>(index));
+  };
+
+  auto add_extension = [&](std::string_view ext) {
+    const auto index = codecs.FindFormatForExtension(ascii_to_ustring(ext));
+    if (index >= 0) indices.push_back(static_cast<unsigned>(index));
+  };
+
+  if (format == ArchiveFormat::RAR) {
+    if (has_rar5_marker(path)) {
+      add_archive_type("Rar5");
+      add_archive_type("Rar");
+    } else {
+      add_archive_type("Rar");
+      add_archive_type("Rar5");
+    }
+
+    return indices;
+  }
+
+  add_archive_type(format_name(format));
+  if (indices.empty()) add_extension(extension_for_format(format));
+
+  return indices;
+}
+
 CMyComPtr<IInArchive> open_archive(const ExtractionRequest& request,
                                    const fs::path& path, ArchiveFormat format) {
   auto& c = codecs().get();
-  const auto ext = ascii_to_ustring(extension_for_format(format));
-  const auto format_index = c.FindFormatForExtension(ext);
-  if (format_index < 0) {
+  const auto format_indices = format_indices_for_request(c, format, path);
+  if (format_indices.empty()) {
     throw std::runtime_error{"format is not registered: " +
-                             std::string(extension_for_format(format))};
-  }
-
-  CMyComPtr<IInArchive> archive;
-  auto hr = c.CreateInArchive(static_cast<unsigned>(format_index), archive);
-  if (hr != S_OK || !archive)
-    throw std::runtime_error{"failed to create archive handler"};
-
-  auto stream_spec = new StdInStream{path};
-  CMyComPtr<IInStream> stream = stream_spec;
-
-  auto open_spec = new OpenCallback{request.password};
-  CMyComPtr<IArchiveOpenCallback> open_cb = open_spec;
-
-  UInt64 max_check = MAX_OPEN_CHECK_BYTES;
-  hr = archive->Open(stream, &max_check, open_cb);
-  if (hr == S_FALSE) {
-    throw std::runtime_error{"could not open archive as " +
                              std::string(format_name(format))};
   }
-  if (hr != S_OK) throw std::runtime_error{"open failed"};
 
-  return archive;
+  HRESULT last_hr = S_FALSE;
+  for (const auto format_index : format_indices) {
+    CMyComPtr<IInArchive> archive;
+    auto hr = c.CreateInArchive(format_index, archive);
+    if (hr != S_OK || !archive)
+      throw std::runtime_error{"failed to create archive handler"};
+
+    auto stream_spec = new StdInStream{path};
+    CMyComPtr<IInStream> stream = stream_spec;
+
+    auto open_spec = new OpenCallback{request.password};
+    CMyComPtr<IArchiveOpenCallback> open_cb = open_spec;
+
+    UInt64 max_check = MAX_OPEN_CHECK_BYTES;
+    hr = archive->Open(stream, &max_check, open_cb);
+
+    if (hr == S_OK) return archive;
+    if (hr == S_FALSE) {
+      last_hr = hr;
+      continue;
+    }
+
+    throw std::runtime_error{"open failed, hresult=" + std::to_string(hr)};
+  }
+
+  throw std::runtime_error{"could not open archive as " +
+                           std::string(format_name(format)) +
+                           ", hresult=" + std::to_string(last_hr)};
 }
 
 std::vector<fs::path> extract_one(const ExtractionRequest& request,
